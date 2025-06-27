@@ -48,11 +48,6 @@ class Krishna:
         # Initialize speech recognition
         self.recognizer = sr.Recognizer()
         
-        # Initialize camera
-        self.camera = cv2.VideoCapture(0)
-        self.camera_thread = None
-        self.camera_active = False
-        
         # Initialize GIF window in a separate thread
         self.gif_thread = threading.Thread(target=self._init_gif_window)
         self.gif_thread.daemon = True
@@ -117,39 +112,8 @@ class Krishna:
         
     def play_startup_sound(self):
         """Play the startup sound"""
-        try:
-            sound_path = r"D:\Personal Ai Assistant\Sound\jarvis-147563.mp3"            
-            # Open the default camera (usually the first camera)
-            cap = cv2.VideoCapture(0)
-            
-            if not cap.isOpened():
-                print("Cannot open camera")
-                exit()
-            
-            while True:
-                # Capture frame-by-frame
-                ret, frame = cap.read()
-                if not ret:
-                    print("Can't receive frame (stream end?). Exiting ...")
-                    break
-            
-                # Display the resulting frame
-                cv2.imshow('Camera', frame)
-                if cv2.waitKey(1) == ord('q'):
-                    break
-            
-            # Release the camera and close windows
-            cap.release()
-            cv2.destroyAllWindows()
-            if os.path.exists(sound_path):
-                pygame.mixer.music.load(sound_path)
-                pygame.mixer.music.play()
-                # Wait for the sound to finish playing
-                while pygame.mixer.music.get_busy():
-                    time.sleep(0.1)
-        except Exception as e:
-            print(f"Could not play startup sound: {e}")
-        
+    sound_path = r"D:\Personal Ai Assistant\Sound\jarvis-147563.mp3"         
+
     def speak(self, text):
         """Convert text to speech"""
         print(f"Krishna: {text}")
@@ -481,103 +445,6 @@ class Krishna:
         except Exception as e:
             self.speak(f"Sorry, I couldn't open that website. Error: {str(e)}")
 
-    def start_camera_feed(self):
-        """Start the camera feed for real-time information gathering"""
-        if self.camera_active:
-            self.speak("Camera is already active")
-            return
-            
-        self.camera_active = True
-        self.camera_thread = threading.Thread(target=self._camera_feed)
-        self.camera_thread.daemon = True
-        self.camera_thread.start()
-        self.speak("Camera feed activated. What would you like me to analyze?")
-        
-    def stop_camera_feed(self):
-        """Stop the camera feed"""
-        self.camera_active = False
-        self.speak("Camera feed deactivated")
-        
-    def _camera_feed(self):
-        """Process camera feed in a separate thread"""
-        while self.camera_active:
-            ret, frame = self.camera.read()
-            if not ret:
-                continue
-                
-            # Display the camera feed
-            cv2.imshow('Krishna Camera Feed', frame)
-            
-            # Exit if 'q' is pressed
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
-                
-        cv2.destroyAllWindows()
-        
-    def analyze_camera_feed(self, task):
-        """Analyze the camera feed based on user request"""
-        try:
-            if not self.camera_active:
-                self.speak("Please activate the camera first")
-                return
-                
-            ret, frame = self.camera.read()
-            if not ret:
-                self.speak("Could not capture image from camera")
-                return
-                
-            if 'face' in task or 'person' in task:
-                # Face detection
-                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-                faces = face_cascade.detectMultiScale(gray, 1.1, 4)
-                
-                if len(faces) > 0:
-                    self.speak(f"I detected {len(faces)} face{'s' if len(faces) > 1 else ''} in the camera feed")
-                else:
-                    self.speak("I didn't detect any faces in the camera feed")
-                    
-            elif 'object' in task or 'identify' in task:
-                # Simple object detection (placeholder - would use a proper model in production)
-                self.speak("For detailed object analysis, I would need to connect to a specialized AI service")
-                
-            elif 'text' in task or 'read' in task:
-                # OCR (placeholder - would use pytesseract or similar in production)
-                self.speak("To read text from images, I would need optical character recognition capabilities")
-                
-            else:
-                self.speak("I can analyze faces, objects, or text in the camera feed. Please specify what to analyze")
-                
-        except Exception as e:
-            self.speak(f"Sorry, I couldn't complete the camera analysis. Error: {str(e)}")
-            
-    def get_visual_information(self):
-        """Capture and describe visual information from camera"""
-        try:
-            self.speak("Capturing image for analysis")
-            ret, frame = self.camera.read()
-            if not ret:
-                self.speak("Could not capture image from camera")
-                return
-                
-            # Save the image temporarily
-            image_path = "temp_capture.jpg"
-            cv2.imwrite(image_path, frame)
-            
-            # Use ChatGPT's vision capabilities (if available) or describe the image
-            self.speak("Analyzing the captured image")
-            
-            # This would be replaced with actual image analysis in a production system
-            # For now, we'll use a placeholder response
-            response = "I see a visual scene captured by the camera. For detailed analysis, I would need advanced computer vision capabilities."
-            
-            self.speak(response)
-            return response
-            
-        except Exception as e:
-            self.speak(f"Sorry, I couldn't analyze the visual information. Error: {str(e)}")
-            return None
-
     def process_command(self, command):
         """Process user commands"""
         if not command:
@@ -679,17 +546,6 @@ class Krishna:
         elif 'open website' in command or 'open' in command:
             url = command.replace('open website', '').replace('open', '').strip()
             self.open_website(url)
-            
-        # Camera controls
-        elif 'camera' in command or 'visual' in command:
-            if 'start' in command or 'activate' in command or 'on' in command:
-                self.start_camera_feed()
-            elif 'stop' in command or 'deactivate' in command or 'off' in command:
-                self.stop_camera_feed()
-            elif 'analyze' in command or 'look' in command or 'see' in command:
-                self.analyze_camera_feed(command)
-            elif 'capture' in command or 'take picture' in command:
-                self.get_visual_information()
                 
         # Exit command
         elif 'exit' in command or 'goodbye' in command or 'quit' in command:
